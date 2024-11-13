@@ -1,97 +1,84 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 
+# Load the trained models and scalers
+# Assuming you have saved your models and scalers
+# For example:
+# linear_model = joblib.load('linear_model.pkl')
+# random_forest_model = joblib.load('random_forest_model.pkl')
+# scaler = joblib.load('scaler.pkl')
 
-def predict_churn(X_live, churn_features, churn_pipeline_dc_fe, churn_pipeline_model):
+# Dummy placeholders for models and scaler
+linear_model = LinearRegression()
+random_forest_model = RandomForestRegressor()
+scaler = StandardScaler()
 
-    # from live data, subset features related to this pipeline
-    X_live_churn = X_live.filter(churn_features)
+def predict_house_price(model, X_live):
+    # Apply scaling
+    X_live_scaled = scaler.transform(X_live)
+    
+    # Predict
+    prediction = model.predict(X_live_scaled)
+    
+    return prediction
 
-    # apply data cleaning / feat engine pipeline to live data
-    X_live_churn_dc_fe = churn_pipeline_dc_fe.transform(X_live_churn)
+def main():
+    st.title("California Housing Prices Prediction")
 
-    # predict
-    churn_prediction = churn_pipeline_model.predict(X_live_churn_dc_fe)
-    churn_prediction_proba = churn_pipeline_model.predict_proba(
-        X_live_churn_dc_fe)
-    # st.write(churn_prediction_proba)
+    st.write("""
+    ## Input the features to get the predicted house price
+    """)
 
-    # Create a logic to display the results
-    churn_prob = churn_prediction_proba[0, churn_prediction][0]*100
-    if churn_prediction == 1:
-        churn_result = 'will'
-    else:
-        churn_result = 'will not'
+    longitude = st.number_input("Longitude", value=-122.23)
+    latitude = st.number_input("Latitude", value=37.88)
+    housing_median_age = st.number_input("Housing Median Age", value=41.0)
+    total_rooms = st.number_input("Total Rooms", value=880.0)
+    total_bedrooms = st.number_input("Total Bedrooms", value=129.0)
+    population = st.number_input("Population", value=322.0)
+    households = st.number_input("Households", value=126.0)
+    median_income = st.number_input("Median Income", value=8.3252)
+    ocean_proximity = st.selectbox("Ocean Proximity", ["<1H OCEAN", "INLAND", "ISLAND", "NEAR BAY", "NEAR OCEAN"])
 
-    statement = (
-        f'### There is {churn_prob.round(1)}% probability '
-        f'that this prospect **{churn_result} churn**.')
+    # Create a DataFrame for the input
+    input_data = pd.DataFrame({
+        "longitude": [longitude],
+        "latitude": [latitude],
+        "housing_median_age": [housing_median_age],
+        "total_rooms": [total_rooms],
+        "total_bedrooms": [total_bedrooms],
+        "population": [population],
+        "households": [households],
+        "median_income": [median_income],
+        "ocean_proximity": [ocean_proximity]
+    })
+    # Rename the column if necessary
 
-    st.write(statement)
+    input_data.rename(columns={'total_bedrooms': 'bedrooms'}, inplace=True)
 
-    return churn_prediction
+    # Convert ocean_proximity to dummy variables
+    input_data = input_data.join(pd.get_dummies(input_data.ocean_proximity)).drop(["ocean_proximity"], axis=1)
 
+    # Log transformation
+    input_data["total_rooms"] = np.log(input_data["total_rooms"] + 1)
+    input_data["total_bedrooms"] = np.log(input_data["total_bedrooms"] + 1)
+    input_data["population"] = np.log(input_data["population"] + 1)
+    input_data["households"] = np.log(input_data["households"] + 1)
 
-def predict_tenure(X_live, tenure_features, tenure_pipeline, tenure_labels_map):
+    # Feature engineering
+    input_data["bedroom_ratio"] = input_data["total_bedrooms"] / input_data["total_rooms"]
+    input_data["household_rooms"] = input_data["total_rooms"] / input_data["households"]
 
-    # from live data, subset features related to this pipeline
-    X_live_tenure = X_live.filter(tenure_features)
+    if st.button("Predict with Linear Regression"):
+        prediction = predict_house_price(linear_model, input_data)
+        st.write(f"### Predicted House Price: ${prediction[0]:,.2f}")
 
-    # predict
-    tenure_prediction = tenure_pipeline.predict(X_live_tenure)
-    tenure_prediction_proba = tenure_pipeline.predict_proba(X_live_tenure)
-    # st.write(tenure_prediction_proba)
+    if st.button("Predict with Random Forest"):
+        prediction = predict_house_price(random_forest_model, input_data)
+        st.write(f"### Predicted House Price: ${prediction[0]:,.2f}")
 
-    # create a logic to display the results
-    proba = tenure_prediction_proba[0, tenure_prediction][0]*100
-    tenure_levels = tenure_labels_map[tenure_prediction[0]]
-
-    if tenure_prediction != 1:
-        statement = (
-            f"* In addition, there is a {proba.round(2)}% probability the prospect "
-            f"will stay **{tenure_levels} months**. "
-        )
-    else:
-        statement = (
-            f"* The model has predicted the prospect would stay **{tenure_levels} months**, "
-            f"however we acknowledge that the recall and precision levels for {tenure_levels} is not "
-            f"strong. The AI tends to identify potential churners, but for this prospect the AI is not "
-            f"confident enough on how long the prospect would stay."
-        )
-
-    st.write(statement)
-
-
-def predict_cluster(X_live, cluster_features, cluster_pipeline, cluster_profile):
-
-    # from live data, subset features related to this pipeline
-    X_live_cluster = X_live.filter(cluster_features)
-
-    # predict
-    cluster_prediction = cluster_pipeline.predict(X_live_cluster)
-
-    statement = (
-        f"### The prospect is expected to belong to **cluster {cluster_prediction[0]}**")
-    st.write("---")
-    st.write(statement)
-
-  	# text based on "07 - Modeling and Evaluation - Cluster Sklearn" notebook conclusions
-    statement = (
-        f"* Historically, **users in Clusters 0  don't tend to Churn** "
-        f"whereas in **Cluster 1 a third of users churned** "
-        f"and in **Cluster 2 a quarter of users churned**."
-    )
-    st.info(statement)
-
-  	# text based on "07 - Modeling and Evaluation - Cluster Sklearn" notebook conclusions
-    statement = (
-        f"* The cluster profile interpretation allowed us to label the cluster in the following fashion:\n"
-        f"* Cluster 0 has user without internet, who is a low spender with phone\n"
-        f"* Cluster 1 has user with Internet, who is a high spender with phone\n"
-        f"* Cluster 2 has user with Internet , who is a mid spender without phone"
-    )
-    st.success(statement)
-
-    # hack to not display index in st.table() or st.write()
-    cluster_profile.index = [" "] * len(cluster_profile)
-    # display cluster profile in a table - it is better than in st.write()
-    st.table(cluster_profile)
+if __name__ == "__main__":
+    main()
