@@ -6,7 +6,7 @@ import seaborn as sns
 
 def page_prediction_body():
     # Load the dataset
-    data = pd.read_csv("/workspace/pp5-house-price-prediction/housing.csv")
+    data = pd.read_csv("cleaned_housing.csv")
 
     st.title("Prediction Results")
 

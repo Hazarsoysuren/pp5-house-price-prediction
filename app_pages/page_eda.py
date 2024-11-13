@@ -6,15 +6,14 @@ import numpy as np
 
 def eda_page():
     # Load the cleaned data directly within the function
-    df = pd.read_csv("/workspace/pp5-house-price-prediction/cleaned_housing.csv")
+    df = pd.read_csv("cleaned_housing.csv")
 
     st.title("Exploratory Data Analysis (EDA)")
-  
-      # Add the introductory text
-    st.write("""
-     Business requirement 1: Help clients understand key factors affecting house prices and provide insights into market trends.
-    """)
 
+    # Add the introductory text
+    st.write("""
+    Help clients understand key factors affecting house prices and provide insights into market trends.
+    """)
 
     # Display histograms
     st.header("Histograms for Key Features")
